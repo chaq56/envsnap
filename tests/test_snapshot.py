@@ -19,6 +19,14 @@ def snapshot_dir(tmp_path: Path) -> Path:
     return tmp_path / "snapshots"
 
 
+@pytest.fixture()
+def saved_snapshot(snapshot_dir: Path):
+    """Create and save a snapshot, returning the snapshot dict."""
+    snap = capture("fixture-snap", env=SAMPLE_ENV)
+    save(snap, snapshot_dir=snapshot_dir)
+    return snap
+
+
 def test_capture_returns_expected_keys():
     snap = capture("test-snap", env=SAMPLE_ENV)
     assert snap["name"] == "test-snap"
@@ -74,3 +82,11 @@ def test_delete_removes_file(snapshot_dir):
 def test_delete_raises_when_missing(snapshot_dir):
     with pytest.raises(FileNotFoundError):
         delete("nonexistent", snapshot_dir=snapshot_dir)
+
+
+def test_load_roundtrip_preserves_all_fields(saved_snapshot, snapshot_dir):
+    """Verify that saving and loading a snapshot preserves all fields exactly."""
+    loaded = load(saved_snapshot["name"], snapshot_dir=snapshot_dir)
+    assert loaded["name"] == saved_snapshot["name"]
+    assert loaded["created_at"] == saved_snapshot["created_at"]
+    assert loaded["variables"] == saved_snapshot["variables"]
