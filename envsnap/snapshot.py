@@ -55,3 +55,29 @@ def delete(name: str, snapshot_dir: Path = DEFAULT_SNAPSHOT_DIR) -> None:
     if not file_path.exists():
         raise FileNotFoundError(f"Snapshot '{name}' not found at {file_path}")
     file_path.unlink()
+
+
+def diff(name_a: str, name_b: str, snapshot_dir: Path = DEFAULT_SNAPSHOT_DIR) -> dict:
+    """Compare two snapshots and return the differences between their variables.
+
+    Returns a dict with three keys:
+      - 'added':   variables present in name_b but not in name_a
+      - 'removed': variables present in name_a but not in name_b
+      - 'changed': variables present in both but with different values,
+                   as {key: {"from": old_value, "to": new_value}}
+    """
+    vars_a = load(name_a, snapshot_dir)["variables"]
+    vars_b = load(name_b, snapshot_dir)["variables"]
+
+    keys_a = set(vars_a)
+    keys_b = set(vars_b)
+
+    return {
+        "added": {k: vars_b[k] for k in keys_b - keys_a},
+        "removed": {k: vars_a[k] for k in keys_a - keys_b},
+        "changed": {
+            k: {"from": vars_a[k], "to": vars_b[k]}
+            for k in keys_a & keys_b
+            if vars_a[k] != vars_b[k]
+        },
+    }
